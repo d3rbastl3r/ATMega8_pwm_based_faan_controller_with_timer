@@ -20,6 +20,31 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 
+volatile uint8_t pwmValue = 128;
+
+void setupValDisplay() {
+    // Setup output ports
+    DDRD |= (1<<DDD5);  // SER Port
+    DDRD |= (1<<DDD6);  // SRCLK Port
+    DDRD |= (1<<DDD7);  // RCLK Port
+}
+
+/**
+ * Push the given byte to the register and finally execute latch.
+ * The left bit will be pushed first.
+ */
+void pushByteAndLatch(uint8_t byte) {
+    for (uint8_t i=0; i<8; ++i) {
+        (byte & 128) ? PORTD |= (1 << PD5) : PORTD &= ~(1 << PD5);
+        PORTD |= (1 << PD6);
+        PORTD &= ~(1 << PD6);
+        byte = byte << 1;
+    }
+
+    PORTD |= (1 << PD7);
+    PORTD &= ~(1 << PD7);
+}
+
 void setupPWM() {
     DDRB |= (1 << DDB1); // Setup the Output for PWM (OC1A)
 
@@ -45,18 +70,19 @@ void setupPWM() {
         (1 << COM1A1) |
         (0 << COM1A0);
 
-    // If the value '128' is reached, the PWM signal will set to LOW
-    OCR1A=128; // 50% duty cycle
+    OCR1A=pwmValue;
 }
 
 void setup() {
     setupPWM();
+    setupValDisplay();
 }
 
 int main(void) {
     setup();
 
     while(1) {
+        pushByteAndLatch(pwmValue);
     }
 
     return 0;
