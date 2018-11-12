@@ -73,8 +73,34 @@ void setupPWM() {
     OCR1A=pwmValue;
 }
 
+void initADC() {
+    ADMUX |=
+        // left shift result
+        (1 << ADLAR) |
+
+        // AREF, Internal V ref turned off
+        (0 << REFS1) |
+        (1 << REFS0) |
+
+        // use ADC0 for input (PC0), MUX3..0 = 0000
+        (0 << MUX3)  |
+        (0 << MUX2)  |
+        (0 << MUX1)  |
+        (0 << MUX0);
+
+    ADCSRA =
+        // Enable ADC
+        (1 << ADEN)  |
+
+        // no prescaler is required, we use only 8bit resolution
+        (0 << ADPS2) |
+        (0 << ADPS1) |
+        (0 << ADPS0);
+}
+
 void setup() {
     setupPWM();
+    initADC();
     setupValDisplay();
 }
 
@@ -82,7 +108,12 @@ int main(void) {
     setup();
 
     while(1) {
+        ADCSRA |= (1 << ADSC);         // start ADC measurement
+        while (ADCSRA & (1 << ADSC));  // wait till conversion complete
+
+        pwmValue = ADCH;               // read value from ADC
         pushByteAndLatch(pwmValue);
+        OCR1A=pwmValue;
     }
 
     return 0;
