@@ -50,7 +50,7 @@ void setupPWM() {
 }
 
 void setup() {
-    pwmSetup();
+    setupPWM();
 }
 
 int main(void) {
