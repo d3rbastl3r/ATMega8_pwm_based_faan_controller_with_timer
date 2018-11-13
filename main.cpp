@@ -20,6 +20,9 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 
+const uint8_t fanStepValues[7] = {63, 95, 127, 159, 191, 223, 255};
+uint8_t currentFanStep = 0;
+
 volatile uint8_t pwmValue = 128;
 
 void setupValDisplay() {
@@ -104,6 +107,17 @@ void setup() {
     setupValDisplay();
 }
 
+void setFanStep(uint8_t potiVal) {
+    if (potiVal > fanStepValues[currentFanStep]) {
+        ++currentFanStep;
+        pwmValue = fanStepValues[currentFanStep];
+
+    } else if (currentFanStep > 0 && potiVal <= fanStepValues[currentFanStep-1]) {
+        --currentFanStep;
+        pwmValue = fanStepValues[currentFanStep];
+    }
+}
+
 int main(void) {
     setup();
 
@@ -111,7 +125,7 @@ int main(void) {
         ADCSRA |= (1 << ADSC);         // start ADC measurement
         while (ADCSRA & (1 << ADSC));  // wait till conversion complete
 
-        pwmValue = ADCH;               // read value from ADC
+        setFanStep(ADCH); // read value from ADC
         pushByteAndLatch(pwmValue);
         OCR1A=pwmValue;
     }
