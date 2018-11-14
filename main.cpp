@@ -25,11 +25,26 @@ uint8_t currentFanStep = 0;
 
 volatile uint8_t pwmValue = 128;
 
+volatile uint64_t timerValue = 0; // time in uSeconds
+
+ISR (TIMER0_OVF_vect) {
+    // On 16.000.000 / 1024 / 256 = 61,03515635 = 16384uS every interrupt cycle
+    timerValue += 16384;
+}
+
 void setupValDisplay() {
     // Setup output ports
     DDRD |= (1<<DDD5);  // SER Port
     DDRD |= (1<<DDD6);  // SRCLK Port
     DDRD |= (1<<DDD7);  // RCLK Port
+}
+
+void initOverflowInterruptCounter() {
+    // Set Timer/Counter0 prescaler to clock/1024.
+    TCCR0 |= (1 << CS02) | (0 << CS01) | (1 << CS00);
+
+    // Enable overflow interrupt for Timer/Counter0
+    TIMSK |= (1 << TOIE0);
 }
 
 /**
@@ -104,7 +119,9 @@ void initADC() {
 void setup() {
     setupPWM();
     initADC();
+    initOverflowInterruptCounter();
     setupValDisplay();
+    sei();
 }
 
 void setFanStep(uint8_t potiVal) {
@@ -121,13 +138,22 @@ void setFanStep(uint8_t potiVal) {
 int main(void) {
     setup();
 
+    uint64_t lastCheckedTimerVal = 0;
+    uint8_t debugCounter = 0;
+
     while(1) {
         ADCSRA |= (1 << ADSC);         // start ADC measurement
         while (ADCSRA & (1 << ADSC));  // wait till conversion complete
 
         setFanStep(ADCH); // read value from ADC
-        pushByteAndLatch(pwmValue);
+        //pushByteAndLatch(pwmValue);
         OCR1A=pwmValue;
+
+        if (timerValue-lastCheckedTimerVal >= 1000000 ) {
+            ++debugCounter;
+            lastCheckedTimerVal = timerValue;
+            pushByteAndLatch(debugCounter);
+        }
     }
 
     return 0;
