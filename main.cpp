@@ -138,6 +138,8 @@ void setFanStep(uint8_t potiVal) {
 int main(void) {
     setup();
 
+    pushByteAndLatch(0x00000000);
+
     uint64_t lastCheckedTimerVal = 0;
     uint8_t debugCounter = 0;
 
@@ -147,9 +149,14 @@ int main(void) {
 
         setFanStep(ADCH); // read value from ADC
         //pushByteAndLatch(pwmValue);
-        OCR1A=pwmValue;
 
-        if (timerValue-lastCheckedTimerVal >= 1000000 ) {
+        if (debugCounter < 60) {
+            OCR1A=pwmValue;
+        } else {
+            OCR1A=0;
+        }
+
+        if (timerValue-lastCheckedTimerVal >= 60000000 ) {
             ++debugCounter;
             lastCheckedTimerVal = timerValue;
             pushByteAndLatch(debugCounter);
