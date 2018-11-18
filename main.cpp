@@ -17,13 +17,13 @@
 
 #define F_CPU 16000000
 
+#define MIN_FAN_SPEED_VALUE 60
+#define FAN_SPEED_FACTOR (255 - MIN_FAN_SPEED_VALUE) / 255
+
 #include <avr/io.h>
 #include <avr/interrupt.h>
 
-const uint8_t fanStepValues[7] = {63, 95, 127, 159, 191, 223, 255};
-uint8_t currentFanStep = 0;
-
-volatile uint8_t fanSpeedPwmValue = 0;
+uint8_t fanSpeedPwmValue = 0;
 
 volatile uint64_t timerValue = 0; // time in uSeconds
 
@@ -124,45 +124,50 @@ void setup() {
     sei();
 }
 
-void setFanStep(uint8_t potiVal) {
-    if (potiVal > fanStepValues[currentFanStep]) {
-        ++currentFanStep;
-        fanSpeedPwmValue = fanStepValues[currentFanStep];
-
-    } else if (currentFanStep > 0 && potiVal <= fanStepValues[currentFanStep-1]) {
-        --currentFanStep;
-        fanSpeedPwmValue = fanStepValues[currentFanStep];
-    } else {
-        fanSpeedPwmValue = fanStepValues[currentFanStep];
-    }
+uint8_t computeFanSpeedValue(uint8_t potiVal) {
+    return potiVal * FAN_SPEED_FACTOR + MIN_FAN_SPEED_VALUE;
 }
 
 int main(void) {
     setup();
 
     pushByteAndLatch(0x00000000);
+    uint64_t timerNextStopValue = 0;
+    bool timerTick = false;
 
     while(1) {
-        ADCSRA |= (1 << ADSC);         // start ADC measurement
-        while (ADCSRA & (1 << ADSC));  // wait till conversion complete
-        setFanStep(ADCH); // read value from ADC
-
-        // If timer is less or equals one hour then let the fan run
-        if (timerValue <= 3600000000ULL) {
-            OCR1A=fanSpeedPwmValue;
+        if (timerNextStopValue < timerValue) {
+            timerTick = true;
+            timerNextStopValue += 250000;
         }
 
-        // If the tmer is more then one hour then the fan should be off
-        else {
-            OCR1A=0;
+        if (timerTick) {
+            ADCSRA |= (1 << ADSC);         // start ADC measurement
+            while (ADCSRA & (1 << ADSC));  // wait till conversion complete
+            uint8_t potiVal = ADCH; // read value from ADC
+            fanSpeedPwmValue = computeFanSpeedValue(potiVal);
+            //setFanStep(potiVal);
+
+            // If timer is less or equals one hour then let the fan run
+            if (timerValue <= 3600000000ULL) {
+                OCR1A=fanSpeedPwmValue;
+            }
+
+            // If the tmer is more then one hour then the fan should be off
+            else {
+                OCR1A=0;
+            }
+
+            // Reset timer if the value is more then 24 hours
+            if (timerValue > 86400000000ULL) {
+                timerValue = 0;
+            }
+
+            //pushByteAndLatch(timerValue / 60000000);
+            pushByteAndLatch(fanSpeedPwmValue);
         }
 
-        // Reset timer if the value is more then 24 hours
-        if (timerValue > 86400000000ULL) {
-            timerValue = 0;
-        }
-
-        pushByteAndLatch(timerValue / 60000000);
+        timerTick = false;
     }
 
     return 0;

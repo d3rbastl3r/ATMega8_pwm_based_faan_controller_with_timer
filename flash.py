@@ -7,23 +7,24 @@ from pathlib import Path
 
 MCU_NAME = "m8"
 ISP_NAME = "avrisp2"
-HEX_FILE_NAME = "ATMega8_pwm_based_faan_controller_with_timer.hex"
+FILE_NAME = "ATMega8_pwm_based_faan_controller_with_timer"
 
 if not MCU_NAME:
     print("MCU_NAME is not set")
     sys.exit()
-	
+
 if not ISP_NAME:
     print("ISP_NAME is not set")
     sys.exit()
-	
-if not HEX_FILE_NAME:
+
+if not FILE_NAME:
     print("HEX_FILE_NAME is not set")
     sys.exit()
 
-hexFile = Path("./bin/Release/" + HEX_FILE_NAME)
+hexFile = Path("./bin/Release/" + FILE_NAME + ".hex")
 if not hexFile.exists():
-    print("File './bin/Release/" + HEX_FILE_NAME + "' does not exists")
+    print("File './bin/Release/" + FILE_NAME + "' does not exists")
     sys.exit()
 
-os.system("avrdude -p " + MCU_NAME + " -c " + ISP_NAME + " -P usb -U flash:w:./bin/Release/" + HEX_FILE_NAME)
+os.system("avrdude -p " + MCU_NAME + " -c " + ISP_NAME + " -P usb -U flash:w:./bin/Release/" + FILE_NAME + ".hex")
+os.system("avr-size -B ./bin/Release/" + FILE_NAME + ".elf")
