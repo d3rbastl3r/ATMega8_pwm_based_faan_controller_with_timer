@@ -27,6 +27,10 @@ uint8_t fanSpeedPwmValue = 0;
 
 volatile uint64_t timerValue = 0; // time in uSeconds
 
+bool isStatusLedOn = false;
+uint64_t statusLedTimerValue = 0;
+uint8_t statusLedActiveMode = 0; // 0 = fan is on, 1 = fan is off, 2 = less then 3 hours to fan start
+
 ISR (TIMER0_OVF_vect) {
     // On 16.000.000 / 1024 / 256 = 61,03515635 = 16384uS every interrupt cycle
     timerValue += 16384;
@@ -121,6 +125,9 @@ void setup() {
     initADC();
     initOverflowInterruptCounter();
     setupValDisplay();
+
+    DDRB |= (1 << DDB0); // Setup the Output fan status LED
+
     sei();
 }
 
@@ -139,14 +146,28 @@ int main(void) {
         if (timerNextStopValue < timerValue) {
             timerTick = true;
             timerNextStopValue += 250000;
+            statusLedTimerValue += 250000;
+        }
+
+        // TODO - Change LED Mode
+        if (statusLedActiveMode == 0) {
+            if (statusLedTimerValue >= 1000000) {
+                isStatusLedOn = !isStatusLedOn;
+                statusLedTimerValue = 0;
+            }
+        }
+
+        if (isStatusLedOn) {
+            PORTB |= (1<<PB0);
+        } else {
+            PORTB &= ~(1<<PB0);
         }
 
         if (timerTick) {
             ADCSRA |= (1 << ADSC);         // start ADC measurement
             while (ADCSRA & (1 << ADSC));  // wait till conversion complete
-            uint8_t potiVal = ADCH; // read value from ADC
+            uint8_t potiVal = ADCH;        // read value from ADC
             fanSpeedPwmValue = computeFanSpeedValue(potiVal);
-            //setFanStep(potiVal);
 
             // If timer is less or equals one hour then let the fan run
             if (timerValue <= 3600000000ULL) {
@@ -163,7 +184,6 @@ int main(void) {
                 timerValue = 0;
             }
 
-            //pushByteAndLatch(timerValue / 60000000);
             pushByteAndLatch(fanSpeedPwmValue);
         }
 
