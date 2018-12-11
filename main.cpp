@@ -20,16 +20,25 @@
 #define MIN_FAN_SPEED_VALUE 60
 #define FAN_SPEED_FACTOR (255 - MIN_FAN_SPEED_VALUE) / 255
 
+#define FAN_ACTIVE_TIMER_VALUE_LESS_THEN 3600000000ULL
+
+#define TIMER_VALUE_RESET 86400000000ULL
+
+#define STATUS_LED_MODE0_DELAY_VALUE 0ULL
+#define STATUS_LED_MODE1_DELAY_VALUE 5000000ULL
+#define STATUS_LED_MODE2_DELAY_VALUE 500000ULL
+
 #include <avr/io.h>
 #include <avr/interrupt.h>
 
+bool isFanOn = false;
 uint8_t fanSpeedPwmValue = 0;
 
 volatile uint64_t timerValue = 0; // time in uSeconds
 
 bool isStatusLedOn = false;
+uint64_t statusLedDelayValue = 0;
 uint64_t statusLedTimerValue = 0;
-uint8_t statusLedActiveMode = 0; // 0 = fan is on, 1 = fan is off, 2 = less then 3 hours to fan start
 
 ISR (TIMER0_OVF_vect) {
     // On 16.000.000 / 1024 / 256 = 61,03515635 = 16384uS every interrupt cycle
@@ -135,6 +144,29 @@ uint8_t computeFanSpeedValue(uint8_t potiVal) {
     return potiVal * FAN_SPEED_FACTOR + MIN_FAN_SPEED_VALUE;
 }
 
+void setStatusLedDelay() {
+    const uint64_t THREE_HOURS_VALUE = 10800000000ULL;
+
+    // Fan is active
+    if (isFanOn) {
+        statusLedDelayValue = STATUS_LED_MODE0_DELAY_VALUE;
+    }
+
+    // Less then 3 hours to fan start
+    else if(TIMER_VALUE_RESET - timerValue <= THREE_HOURS_VALUE) {
+        statusLedDelayValue = STATUS_LED_MODE2_DELAY_VALUE;
+    }
+
+    // Fan is off
+    else {
+        statusLedDelayValue = STATUS_LED_MODE1_DELAY_VALUE;
+    }
+}
+
+void setFanStatus() {
+    isFanOn = timerValue <= FAN_ACTIVE_TIMER_VALUE_LESS_THEN;
+}
+
 int main(void) {
     setup();
 
@@ -149,14 +181,6 @@ int main(void) {
             statusLedTimerValue += 250000;
         }
 
-        // TODO - Change LED Mode
-        if (statusLedActiveMode == 0) {
-            if (statusLedTimerValue >= 1000000) {
-                isStatusLedOn = !isStatusLedOn;
-                statusLedTimerValue = 0;
-            }
-        }
-
         if (isStatusLedOn) {
             PORTB |= (1<<PB0);
         } else {
@@ -169,18 +193,20 @@ int main(void) {
             uint8_t potiVal = ADCH;        // read value from ADC
             fanSpeedPwmValue = computeFanSpeedValue(potiVal);
 
-            // If timer is less or equals one hour then let the fan run
-            if (timerValue <= 3600000000ULL) {
-                OCR1A=fanSpeedPwmValue;
-            }
+            setFanStatus();
+            setStatusLedDelay();
 
-            // If the tmer is more then one hour then the fan should be off
-            else {
-                OCR1A=0;
+            isFanOn ? OCR1A=fanSpeedPwmValue : OCR1A=0;
+
+            if (statusLedDelayValue == STATUS_LED_MODE0_DELAY_VALUE) {
+                isStatusLedOn = true;
+
+            } else if (statusLedTimerValue >= statusLedDelayValue) {
+                isStatusLedOn = !isStatusLedOn;
             }
 
             // Reset timer if the value is more then 24 hours
-            if (timerValue > 86400000000ULL) {
+            if (timerValue > TIMER_VALUE_RESET) {
                 timerValue = 0;
             }
 
