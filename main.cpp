@@ -45,12 +45,12 @@ ISR (TIMER0_OVF_vect) {
     timerValue += 16384;
 }
 
-void setupValDisplay() {
-    // Setup output ports
-    DDRD |= (1<<DDD5);  // SER Port
-    DDRD |= (1<<DDD6);  // SRCLK Port
-    DDRD |= (1<<DDD7);  // RCLK Port
-}
+//void setupValDisplay() {
+//    // Setup output ports
+//    DDRD |= (1<<DDD5);  // SER Port
+//    DDRD |= (1<<DDD6);  // SRCLK Port
+//    DDRD |= (1<<DDD7);  // RCLK Port
+//}
 
 void initOverflowInterruptCounter() {
     // Set Timer/Counter0 prescaler to clock/1024.
@@ -64,17 +64,17 @@ void initOverflowInterruptCounter() {
  * Push the given byte to the register and finally execute latch.
  * The left bit will be pushed first.
  */
-void pushByteAndLatch(uint8_t byte) {
-    for (uint8_t i=0; i<8; ++i) {
-        (byte & 128) ? PORTD |= (1 << PD5) : PORTD &= ~(1 << PD5);
-        PORTD |= (1 << PD6);
-        PORTD &= ~(1 << PD6);
-        byte = byte << 1;
-    }
-
-    PORTD |= (1 << PD7);
-    PORTD &= ~(1 << PD7);
-}
+//void pushByteAndLatch(uint8_t byte) {
+//    for (uint8_t i=0; i<8; ++i) {
+//        (byte & 128) ? PORTD |= (1 << PD5) : PORTD &= ~(1 << PD5);
+//        PORTD |= (1 << PD6);
+//        PORTD &= ~(1 << PD6);
+//        byte = byte << 1;
+//    }
+//
+//    PORTD |= (1 << PD7);
+//    PORTD &= ~(1 << PD7);
+//}
 
 void setupPWM() {
     DDRB |= (1 << DDB1); // Setup the Output for PWM (OC1A)
@@ -133,7 +133,7 @@ void setup() {
     setupPWM();
     initADC();
     initOverflowInterruptCounter();
-    setupValDisplay();
+//    setupValDisplay();
 
     DDRB |= (1 << DDB0); // Setup the Output fan status LED
 
@@ -153,7 +153,7 @@ void setStatusLedDelay() {
     }
 
     // Less then 3 hours to fan start
-    else if(TIMER_VALUE_RESET - timerValue <= THREE_HOURS_VALUE) {
+    else if ((timerValue + THREE_HOURS_VALUE) >= TIMER_VALUE_RESET) {
         statusLedDelayValue = STATUS_LED_MODE2_DELAY_VALUE;
     }
 
@@ -170,7 +170,7 @@ void setFanStatus() {
 int main(void) {
     setup();
 
-    pushByteAndLatch(0x00000000);
+//    pushByteAndLatch(0x00000000);
     uint64_t timerNextStopValue = 0;
     bool timerTick = false;
 
@@ -210,7 +210,7 @@ int main(void) {
                 timerValue = 0;
             }
 
-            pushByteAndLatch(fanSpeedPwmValue);
+//            pushByteAndLatch(fanSpeedPwmValue);
         }
 
         timerTick = false;
