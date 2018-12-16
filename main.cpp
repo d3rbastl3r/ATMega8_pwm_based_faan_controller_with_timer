@@ -15,7 +15,7 @@
  * @since 11.11.2018
  */
 
-#define F_CPU 16000000
+#define F_CPU 16000000UL
 
 #define MIN_FAN_SPEED_VALUE 60
 #define FAN_SPEED_FACTOR (255 - MIN_FAN_SPEED_VALUE) / 255
@@ -203,6 +203,7 @@ int main(void) {
 
             } else if (statusLedTimerValue >= statusLedDelayValue) {
                 isStatusLedOn = !isStatusLedOn;
+                statusLedTimerValue = 0;
             }
 
             // Reset timer if the value is more then 24 hours
