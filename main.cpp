@@ -45,13 +45,6 @@ ISR (TIMER0_OVF_vect) {
     timerValue += 16384;
 }
 
-//void setupValDisplay() {
-//    // Setup output ports
-//    DDRD |= (1<<DDD5);  // SER Port
-//    DDRD |= (1<<DDD6);  // SRCLK Port
-//    DDRD |= (1<<DDD7);  // RCLK Port
-//}
-
 void initOverflowInterruptCounter() {
     // Set Timer/Counter0 prescaler to clock/1024.
     TCCR0 |= (1 << CS02) | (0 << CS01) | (1 << CS00);
@@ -59,22 +52,6 @@ void initOverflowInterruptCounter() {
     // Enable overflow interrupt for Timer/Counter0
     TIMSK |= (1 << TOIE0);
 }
-
-/**
- * Push the given byte to the register and finally execute latch.
- * The left bit will be pushed first.
- */
-//void pushByteAndLatch(uint8_t byte) {
-//    for (uint8_t i=0; i<8; ++i) {
-//        (byte & 128) ? PORTD |= (1 << PD5) : PORTD &= ~(1 << PD5);
-//        PORTD |= (1 << PD6);
-//        PORTD &= ~(1 << PD6);
-//        byte = byte << 1;
-//    }
-//
-//    PORTD |= (1 << PD7);
-//    PORTD &= ~(1 << PD7);
-//}
 
 void setupPWM() {
     DDRB |= (1 << DDB1); // Setup the Output for PWM (OC1A)
@@ -133,7 +110,6 @@ void setup() {
     setupPWM();
     initADC();
     initOverflowInterruptCounter();
-//    setupValDisplay();
 
     DDRB |= (1 << DDB0); // Setup the Output fan status LED
 
@@ -170,7 +146,6 @@ void setFanStatus() {
 int main(void) {
     setup();
 
-//    pushByteAndLatch(0x00000000);
     uint64_t timerNextStopValue = 0;
     bool timerTick = false;
 
@@ -209,9 +184,9 @@ int main(void) {
             // Reset timer if the value is more then 24 hours
             if (timerValue > TIMER_VALUE_RESET) {
                 timerValue = 0;
+                timerNextStopValue = 0;
+                timerTick = false;
             }
-
-//            pushByteAndLatch(fanSpeedPwmValue);
         }
 
         timerTick = false;
