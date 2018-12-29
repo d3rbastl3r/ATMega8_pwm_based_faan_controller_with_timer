@@ -111,7 +111,10 @@ void setup() {
     initADC();
     initOverflowInterruptCounter();
 
-    DDRB |= (1 << DDB0); // Setup the Output fan status LED
+    // Setup the Output fan status LED (PB0: Red, PB3: Blue, PB4: Green)
+    DDRB |= (1 << DDB0); // PB0: Red
+    DDRB |= (1 << DDB3); // PB3: Blue
+    DDRB |= (1 << DDB4); // PB4: Green
 
     sei();
 }
@@ -157,9 +160,9 @@ int main(void) {
         }
 
         if (isStatusLedOn) {
-            PORTB |= (1<<PB0);
+            PORTB |= (1<<PB4);
         } else {
-            PORTB &= ~(1<<PB0);
+            PORTB &= ~(1<<PB4);
         }
 
         if (timerTick) {
